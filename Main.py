@@ -17,13 +17,15 @@ class Board:
             [99, 99, -1, -1, -1, -1, -1, -1, -1, -1,99,99], 
             [99, 99, 0,0,0,0,0,0,0,0,99,99],
             [99, 99, 0,0,0,0,0,0,0,0,99,99],
-            [99, 99, 0,0,0,0,4,0,0,0,99,99],
             [99, 99, 0,0,0,0,0,0,0,0,99,99],
+            [99, 99, 0,0,0,-2,0,-2,0,0,99,99],
             [99, 99, 1, 1, 1, 1, 1, 1, 1, 1, 99, 99],
             [99, 99, 4, 2, 3, 5, 6, 3, 2, 4, 99, 99],
             [99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99],
             [99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99]
         ]
+        self.whiteInCheck = False
+        self.blackInCheck = False
 
     def __str__(self):
         out = ""
@@ -43,7 +45,10 @@ class Board:
         return self.board[rank][file]
     
     def isWhite(self,piece):
-        return piece > 0
+        if(piece > 0 and piece < 99):
+            return True
+        elif(piece < 0):
+            return False
     
     def checkMoveValidity(self, piece, potentialMove, tracker, moveList):
         #Checks move validity based on square of the potential move, valid moves will be added to move list
@@ -73,7 +78,8 @@ class Board:
         return tracker
 
 
-    def getBishopMoves(self, piece, startRank, startFile, moveList):
+    def getBishopMoves(self, piece, startRank, startFile):
+        moveList = []
         upleft = dleft = upright = dright = True
         inc = 1
         while True:
@@ -94,10 +100,11 @@ class Board:
 
     def rookMovement(self, piece, rankOp, startRank, rankInc, fileOp, startFile, fileInc, tracker, moveList):
         potMove = (rankOp(startRank, rankInc), fileOp(startFile, fileInc))
-        tracker = self.checkMoveValidity(piece, potMove, tracker,moveList)
+        tracker = self.checkMoveValidity(piece, potMove, tracker, moveList)
         return tracker
     
-    def getRookMoves(self, piece, startRank, startFile, moveList):
+    def getRookMoves(self, piece, startRank, startFile):
+        moveList = []
         up = down = left = right = True
         inc = 1
         while True:
@@ -114,17 +121,65 @@ class Board:
                 break
             inc += 1
         return moveList
+
     
+    def getQueenMoves(self, piece, startRank, startFile):
+        moveList = self.getBishopMoves(piece, startRank, startFile) + self.getRookMoves(piece, startRank, startFile)
+        return moveList
+
+
+    def getKingMoves(self, piece, startRank, startFile):
+        moveList = self.getQueenMoves(piece, startRank, startFile)
+        for move in moveList[:]:
+            if((abs(move[0] - startRank) > 1) or (abs(move[1] - startFile) > 1)):
+                moveList.remove(move)
+        return moveList
+
+    
+    def getPawnMoves(self, piece, startRank, startFile):
+        moveList = []
+        def isFirstMove(piece, startRank):
+            if(self.isWhite(piece)):
+                return startRank == 8
+            else:
+                return startRank == 3
+
+        
+        if self.isWhite(piece):
+            if(self.getPiece(startRank-1, startFile) == 0):
+                moveList.append((startRank-1, startFile))
+
+                if (isFirstMove(piece, startRank) and self.getPiece(startRank-2, startFile) == 0):
+                    moveList.append((startRank-2, startFile))
+
+            if(self.getPiece(startRank-1, startFile+1) < 0):
+                moveList.append((startRank-1, startFile+1))
+            if(self.getPiece(startRank-1, startFile-1) < 0):
+                moveList.append((startRank-1, startFile-1))
+        else:
+            if(self.getPiece(startRank+1, startFile) == 0):
+                moveList.append((startRank+1, startFile))
+
+                if (isFirstMove(piece, startRank) and self.getPiece(startRank+2, startFile) == 0):
+                    moveList.append((startRank+2, startFile))
+
+            if(self.getPiece(startRank+1, startFile+1) > 0 and self.getPiece(startRank+1, startFile+1) < 99):
+                moveList.append((startRank+1, startFile+1))
+            if(self.getPiece(startRank+1, startFile-1) > 0 and self.getPiece(startRank+1, startFile-1) < 99):
+                moveList.append((startRank+1, startFile-1))
+
+        return moveList
+
+        
 
     def getLegalMoves(self, rank, file):
         piece = self.getPiece(rank, file)
         print(f" {piece} | {self.isWhite(piece)} |  {PIECE_MAP[abs(piece)]}")
-        moveList=[]
 
         match abs(piece):
             case 1:
                 #Pawn
-                pass
+                return self.getPawnMoves(piece, rank, file)
             case 2:
                 #Knight
                 moveList.append((rank-2, file+1)) 
@@ -135,7 +190,7 @@ class Board:
                 moveList.append((rank-1,file-2)) 
                 moveList.append((rank+1,file+2)) 
                 moveList.append((rank-1, file+2))
-                #Iterating over a copy of the list to maintain indices of elements 
+                #Iterating over a copy of the list to maintain indices of elements
                 for move in moveList[:]:
                     potentialMove = self.getPiece(move[0], move[1])
                     if piece > 0 and potentialMove > 0:
@@ -145,20 +200,21 @@ class Board:
                     return moveList
             case 3:
                 #Bishop
-                
-                return self.getBishopMoves(piece, rank, file, moveList)
+                return self.getBishopMoves(piece, rank, file)
 
 
             case 4:
                 #Rook
-                
-                return self.getRookMoves(piece, rank, file, moveList)
+                return self.getRookMoves(piece, rank, file)
             
             
             case 5:
-                queenMoves = getBishopMoves() + getRookMoves()
-                return queenMoves
+                return self.getQueenMoves(piece, rank, file)
+
+
+            case 6:
+                return self.getKingMoves(piece, rank, file)
 
 myboard = Board()
 print(str(myboard))
-print(myboard.getLegalMoves(6,6))
+print(myboard.getLegalMoves(8,6))
