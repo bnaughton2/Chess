@@ -72,6 +72,26 @@ class Board:
         return tracker
 
 
+    def getKnightMoves(self, piece, startRank, startFile):
+        moveList = []
+        moveList.append((startRank-2,startFile+1)) 
+        moveList.append((startRank-2,startFile-1)) 
+        moveList.append((startRank+2,startFile+1)) 
+        moveList.append((startRank+2,startFile-1))
+        moveList.append((startRank+1,startFile-2))
+        moveList.append((startRank-1,startFile-2)) 
+        moveList.append((startRank+1,startFile+2)) 
+        moveList.append((startRank-1,startFile+2))
+        #Iterating over a copy of the list to maintain indices of elements
+        for move in moveList[:]:
+            potentialMove = self.getPiece(move[0], move[1])
+            if piece > 0 and potentialMove > 0:
+                moveList.remove(move)
+            elif piece < 0 and (potentialMove < 0 or potentialMove == 99):
+                moveList.remove(move)
+
+        return moveList
+
     def bishopMovement(self, piece, rankOp, startRank, fileOp, startFile, inc, tracker, moveList):
         potMove = (rankOp(startRank,inc), fileOp(startFile,inc))
         tracker = self.checkMoveValidity(piece, potMove, tracker, moveList)
@@ -182,35 +202,18 @@ class Board:
                 return self.getPawnMoves(piece, rank, file)
             case 2:
                 #Knight
-                moveList.append((rank-2, file+1)) 
-                moveList.append((rank-2,file-1)) 
-                moveList.append((rank+2,file+1)) 
-                moveList.append((rank+2,file-1))
-                moveList.append((rank+1,file-2))
-                moveList.append((rank-1,file-2)) 
-                moveList.append((rank+1,file+2)) 
-                moveList.append((rank-1, file+2))
-                #Iterating over a copy of the list to maintain indices of elements
-                for move in moveList[:]:
-                    potentialMove = self.getPiece(move[0], move[1])
-                    if piece > 0 and potentialMove > 0:
-                        moveList.remove(move)
-                    elif piece < 0 and (potentialMove < 0 or potentialMove == 99):
-                        moveList.remove(move)
-                    return moveList
+                return self.getKnightMoves(piece, rank, file)
+
             case 3:
                 #Bishop
                 return self.getBishopMoves(piece, rank, file)
-
 
             case 4:
                 #Rook
                 return self.getRookMoves(piece, rank, file)
             
-            
             case 5:
                 return self.getQueenMoves(piece, rank, file)
-
 
             case 6:
                 return self.getKingMoves(piece, rank, file)
