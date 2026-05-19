@@ -1,0 +1,164 @@
+import operator
+
+PIECE_MAP = {1: "Pawn", 2: "Knight", 3: "Bishop", 4: "Rook", 5: "Queen", 6: "King"}
+COLOR_MAP = {0: "WHITE", 1: "BLACK"}
+PIECE_VALUES = {1: 1, 2: 3, 3: 3, 4: 5, 5: 9}
+
+#Board Bounds because of extra padding to avoid out of bounds exceptions
+### (2,2) to (9,2)
+### (9,2) to (9,9)
+
+class Board:
+    def __init__(self):
+        self.board = [
+            [99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99],
+            [99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99],
+            [99, 99, -4, -2, -3, -5, -6, -3, -2, -4,99,99],
+            [99, 99, -1, -1, -1, -1, -1, -1, -1, -1,99,99], 
+            [99, 99, 0,0,0,0,0,0,0,0,99,99],
+            [99, 99, 0,0,0,0,0,0,0,0,99,99],
+            [99, 99, 0,0,0,0,4,0,0,0,99,99],
+            [99, 99, 0,0,0,0,0,0,0,0,99,99],
+            [99, 99, 1, 1, 1, 1, 1, 1, 1, 1, 99, 99],
+            [99, 99, 4, 2, 3, 5, 6, 3, 2, 4, 99, 99],
+            [99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99],
+            [99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99]
+        ]
+
+    def __str__(self):
+        out = ""
+        i = 0
+        for rank in self.board:
+            row = str(i)+"\t"
+            row += "\t".join("|"+str(x)+"|" for x in rank) 
+            out+=row+"\n"
+            i+=1
+        botRow = ""
+        for y in range(0, 12):
+            botRow += " \t " + str(y)
+        out+= botRow 
+        return out
+
+    def getPiece(self, rank, file):
+        return self.board[rank][file]
+    
+    def isWhite(self,piece):
+        return piece > 0
+    
+    def checkMoveValidity(self, piece, potentialMove, tracker, moveList):
+        #Checks move validity based on square of the potential move, valid moves will be added to move list
+        potentialMoveOccupant = self.getPiece(potentialMove[0], potentialMove[1])
+        if(self.isWhite(piece)):
+            if(potentialMoveOccupant == 0):
+                moveList.append(potentialMove)
+            elif(potentialMoveOccupant < 0):
+                moveList.append(potentialMove)
+                tracker = False
+            else:
+                tracker = False
+        else:
+            if(potentialMoveOccupant == 0):
+                moveList.append(potentialMove)
+            elif(potentialMoveOccupant > 0 and potentialMoveOccupant != 99):
+                moveList.append(potentialMove)
+                tracker = False
+            else:
+                tracker = False
+        return tracker
+
+
+    def bishopMovement(self, piece, rankOp, startRank, fileOp, startFile, inc, tracker, moveList):
+        potMove = (rankOp(startRank,inc), fileOp(startFile,inc))
+        tracker = self.checkMoveValidity(piece, potMove, tracker, moveList)
+        return tracker
+
+
+    def getBishopMoves(self, piece, startRank, startFile, moveList):
+        upleft = dleft = upright = dright = True
+        inc = 1
+        while True:
+            if dleft:
+                dleft = self.bishopMovement(piece, operator.add, startRank, operator.sub, startFile, inc, dleft, moveList)
+            if upleft:
+                upleft = self.bishopMovement(piece, operator.sub, startRank, operator.sub, startFile, inc, upleft, moveList)
+            if dright:
+                dright = self.bishopMovement(piece, operator.sub, startRank, operator.add, startFile, inc, dright, moveList)
+            if upright:
+                upright = self.bishopMovement(piece, operator.add, startRank, operator.add, startFile, inc, upright, moveList)
+
+            if not any([upleft, dleft, upright, dright]):
+                break
+            inc += 1
+        return moveList
+
+
+    def rookMovement(self, piece, rankOp, startRank, rankInc, fileOp, startFile, fileInc, tracker, moveList):
+        potMove = (rankOp(startRank, rankInc), fileOp(startFile, fileInc))
+        tracker = self.checkMoveValidity(piece, potMove, tracker,moveList)
+        return tracker
+    
+    def getRookMoves(self, piece, startRank, startFile, moveList):
+        up = down = left = right = True
+        inc = 1
+        while True:
+            if up:
+                up = self.rookMovement(piece, operator.sub, startRank, inc, operator.mul, startFile, 1, up, moveList)
+            if down:
+                down = self.rookMovement(piece, operator.add, startRank, inc, operator.mul, startFile, 1, down, moveList)
+            if left:
+                left = self.rookMovement(piece, operator.mul, startRank, 1, operator.sub, startFile, inc, left, moveList)
+            if right:
+                right = self.rookMovement(piece, operator.mul, startRank, 1, operator.add, startFile, inc, right, moveList)
+
+            if not any([up, down, left, right]):
+                break
+            inc += 1
+        return moveList
+    
+
+    def getLegalMoves(self, rank, file):
+        piece = self.getPiece(rank, file)
+        print(f" {piece} | {self.isWhite(piece)} |  {PIECE_MAP[abs(piece)]}")
+        moveList=[]
+
+        match abs(piece):
+            case 1:
+                #Pawn
+                pass
+            case 2:
+                #Knight
+                moveList.append((rank-2, file+1)) 
+                moveList.append((rank-2,file-1)) 
+                moveList.append((rank+2,file+1)) 
+                moveList.append((rank+2,file-1))
+                moveList.append((rank+1,file-2))
+                moveList.append((rank-1,file-2)) 
+                moveList.append((rank+1,file+2)) 
+                moveList.append((rank-1, file+2))
+                #Iterating over a copy of the list to maintain indices of elements 
+                for move in moveList[:]:
+                    potentialMove = self.getPiece(move[0], move[1])
+                    if piece > 0 and potentialMove > 0:
+                        moveList.remove(move)
+                    elif piece < 0 and (potentialMove < 0 or potentialMove == 99):
+                        moveList.remove(move)
+                    return moveList
+            case 3:
+                #Bishop
+                
+                return self.getBishopMoves(piece, rank, file, moveList)
+
+
+            case 4:
+                #Rook
+                
+                return self.getRookMoves(piece, rank, file, moveList)
+            
+            
+            case 5:
+                queenMoves = getBishopMoves() + getRookMoves()
+                return queenMoves
+
+myboard = Board()
+print(str(myboard))
+print(myboard.getLegalMoves(6,6))
