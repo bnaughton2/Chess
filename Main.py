@@ -26,6 +26,8 @@ class Board:
         ]
         self.whiteInCheck = False
         self.blackInCheck = False
+        self.capturedWhitePieces = []
+        self.capturedBlackPieces = []
 
     def __str__(self):
         out = ""
@@ -190,6 +192,19 @@ class Board:
 
         return moveList
 
+
+    def makeMove(self, piece, startRank, startFile, move):
+        #Move is a tuple (rank, file)
+        moveOccupant = self.getPiece(move[0], move[1])
+        if(self.isWhite(piece)):
+            if(moveOccupant < 0):
+                self.capturedBlackPieces.append(moveOccupant)
+        else:
+            if(moveOccupant > 0):
+                self.capturedBlackPieces.append(moveOccupant)
+        self.board[move[0]][move[1]] = piece
+        self.board[startRank][startFile] = 0
+
         
 
     def getLegalMoves(self, rank, file):
@@ -213,9 +228,11 @@ class Board:
                 return self.getRookMoves(piece, rank, file)
             
             case 5:
+                #Queen
                 return self.getQueenMoves(piece, rank, file)
 
             case 6:
+                #King
                 return self.getKingMoves(piece, rank, file)
 
 myboard = Board()
