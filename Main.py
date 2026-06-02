@@ -237,4 +237,14 @@ class Board:
 
 myboard = Board()
 print(str(myboard))
-print(myboard.getLegalMoves(8,6))
+moves = myboard.getLegalMoves(8,6)
+track = 1
+for move in moves:
+    print(f"{track} | {move}")
+    track += 1
+choice = int(input("Select move: "))
+
+myboard.makeMove(2, 8, 6, moves[choice-1])
+print(str(myboard))
+print(myboard.capturedBlackPieces)
+# print(myboard.getLegalMoves(8,6))
