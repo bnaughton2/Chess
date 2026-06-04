@@ -74,7 +74,9 @@ class Board:
         return tracker
 
 
-    def getKnightMoves(self, piece, startRank, startFile):
+    def getKnightMoves(self, piece, start):
+        startRank = start[0]
+        startFile = start[1]
         moveList = []
         moveList.append((startRank-2,startFile+1)) 
         moveList.append((startRank-2,startFile-1)) 
@@ -94,13 +96,17 @@ class Board:
 
         return moveList
 
-    def bishopMovement(self, piece, rankOp, startRank, fileOp, startFile, inc, tracker, moveList):
+    def bishopMovement(self, piece, start, rankOp, fileOp, inc, tracker, moveList):
+        startRank = start[0]
+        startFile = start[1]
         potMove = (rankOp(startRank,inc), fileOp(startFile,inc))
         tracker = self.checkMoveValidity(piece, potMove, tracker, moveList)
         return tracker
 
 
-    def getBishopMoves(self, piece, startRank, startFile):
+    def getBishopMoves(self, piece, start):
+        startRank = start[0]
+        startFile = start[1]
         moveList = []
         upleft = dleft = upright = dright = True
         inc = 1
@@ -120,12 +126,16 @@ class Board:
         return moveList
 
 
-    def rookMovement(self, piece, rankOp, startRank, rankInc, fileOp, startFile, fileInc, tracker, moveList):
+    def rookMovement(self, piece, start, rankOp, rankInc, fileOp, fileInc, tracker, moveList):
+        startRank = start[0]
+        startFile = start[1]
         potMove = (rankOp(startRank, rankInc), fileOp(startFile, fileInc))
         tracker = self.checkMoveValidity(piece, potMove, tracker, moveList)
         return tracker
     
-    def getRookMoves(self, piece, startRank, startFile):
+    def getRookMoves(self, piece, start):
+        startRank = start[0]
+        startFile = start[1]
         moveList = []
         up = down = left = right = True
         inc = 1
@@ -145,12 +155,16 @@ class Board:
         return moveList
 
     
-    def getQueenMoves(self, piece, startRank, startFile):
+    def getQueenMoves(self, piece, start):
+        startRank = start[0]
+        startFile = start[1]
         moveList = self.getBishopMoves(piece, startRank, startFile) + self.getRookMoves(piece, startRank, startFile)
         return moveList
 
 
-    def getKingMoves(self, piece, startRank, startFile):
+    def getKingMoves(self, piece, start):
+        startRank = start[0]
+        startFile = start[1]
         moveList = self.getQueenMoves(piece, startRank, startFile)
         for move in moveList[:]:
             if((abs(move[0] - startRank) > 1) or (abs(move[1] - startFile) > 1)):
@@ -158,7 +172,9 @@ class Board:
         return moveList
 
     
-    def getPawnMoves(self, piece, startRank, startFile):
+    def getPawnMoves(self, piece, start):
+        startRank = start[0]
+        startFile = start[1]
         moveList = []
         def isFirstMove(piece, startRank):
             if(self.isWhite(piece)):
@@ -193,7 +209,9 @@ class Board:
         return moveList
 
 
-    def makeMove(self, piece, startRank, startFile, move):
+    def makeMove(self, piece, start, move):
+        startRank = start[0]
+        startFile = start[1]
         #Move is a tuple (rank, file)
         moveOccupant = self.getPiece(move[0], move[1])
         if(self.isWhite(piece)):
@@ -205,46 +223,60 @@ class Board:
         self.board[move[0]][move[1]] = piece
         self.board[startRank][startFile] = 0
 
+    
+    def ifWhiteInCheck(self, color):
+        allBlackMoves = []
+        kingLoc = ()
+        for rank in self.board:
+            for file in self.board:
+                if(color > 1):
+                    pass
+                else:
+                    pass
+
+        
         
 
-    def getLegalMoves(self, rank, file):
+    def getLegalMoves(self, start):
+        rank = start[0]
+        file = start[1]
         piece = self.getPiece(rank, file)
         print(f" {piece} | {self.isWhite(piece)} |  {PIECE_MAP[abs(piece)]}")
 
         match abs(piece):
             case 1:
                 #Pawn
-                return self.getPawnMoves(piece, rank, file)
+                return self.getPawnMoves(piece, start)
             case 2:
                 #Knight
-                return self.getKnightMoves(piece, rank, file)
+                return self.getKnightMoves(piece, start)
 
             case 3:
                 #Bishop
-                return self.getBishopMoves(piece, rank, file)
+                return self.getBishopMoves(piece, start)
 
             case 4:
                 #Rook
-                return self.getRookMoves(piece, rank, file)
+                return self.getRookMoves(piece, start)
             
             case 5:
                 #Queen
-                return self.getQueenMoves(piece, rank, file)
+                return self.getQueenMoves(piece, start)
 
             case 6:
                 #King
-                return self.getKingMoves(piece, rank, file)
+                return self.getKingMoves(piece, start)
 
 myboard = Board()
 print(str(myboard))
-moves = myboard.getLegalMoves(8,6)
+moves = myboard.getLegalMoves((8,6))
 track = 1
 for move in moves:
     print(f"{track} | {move}")
     track += 1
 choice = int(input("Select move: "))
 
-myboard.makeMove(2, 8, 6, moves[choice-1])
+myboard.makeMove(2, (8, 6), moves[choice-1])
 print(str(myboard))
 print(myboard.capturedBlackPieces)
 # print(myboard.getLegalMoves(8,6))
