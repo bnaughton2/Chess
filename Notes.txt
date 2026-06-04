@@ -1,0 +1,10 @@
+ToDo:
+Checks
+En passant 
+Promotion
+Draw pieces on board
+Checkmate
+
+
+Check Notes:
+Cannot move your piece and be in Check

@@ -1,7 +1,7 @@
 import operator
 
 PIECE_MAP = {1: "Pawn", 2: "Knight", 3: "Bishop", 4: "Rook", 5: "Queen", 6: "King"}
-COLOR_MAP = {0: "WHITE", 1: "BLACK"}
+COLOR_MAP = {1: "WHITE", 0: "BLACK"}
 PIECE_VALUES = {1: 1, 2: 3, 3: 3, 4: 5, 5: 9}
 
 #Board Bounds because of extra padding to avoid out of bounds exceptions
@@ -28,6 +28,8 @@ class Board:
         self.blackInCheck = False
         self.capturedWhitePieces = []
         self.capturedBlackPieces = []
+        self.whiteKingLoc = (9,6)
+        self.blackKingLoc = (2,6)
 
     def __str__(self):
         out = ""
@@ -224,9 +226,8 @@ class Board:
         self.board[startRank][startFile] = 0
 
     
-    def ifWhiteInCheck(self, color):
-        allBlackMoves = []
-        kingLoc = ()
+    def ifKingInCheck(self, color):
+        allOpposingMoves = []
         for rank in self.board:
             for file in self.board:
                 if(color > 1):
@@ -241,7 +242,7 @@ class Board:
         rank = start[0]
         file = start[1]
         piece = self.getPiece(rank, file)
-        print(f" {piece} | {self.isWhite(piece)} |  {PIECE_MAP[abs(piece)]}")
+        print(f"{piece} | {self.isWhite(piece)} |  {PIECE_MAP[abs(piece)]}")
 
         match abs(piece):
             case 1:
