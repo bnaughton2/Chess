@@ -1,8 +1,10 @@
 import operator
+import copy
 
 PIECE_MAP = {1: "Pawn", 2: "Knight", 3: "Bishop", 4: "Rook", 5: "Queen", 6: "King"}
-COLOR_MAP = {1: "WHITE", 0: "BLACK"}
+COLOR_MAP = {0: "WHITE", 1: "BLACK"}
 PIECE_VALUES = {1: 1, 2: 3, 3: 3, 4: 5, 5: 9}
+BOARD_DIM = 12
 
 #Board Bounds because of extra padding to avoid out of bounds exceptions
 ### (2,2) to (9,2)
@@ -18,18 +20,17 @@ class Board:
             [99, 99, 0,0,0,0,0,0,0,0,99,99],
             [99, 99, 0,0,0,0,0,0,0,0,99,99],
             [99, 99, 0,0,0,0,0,0,0,0,99,99],
-            [99, 99, 0,0,0,-2,0,-2,0,0,99,99],
+            [99, 99, 0,0,0,0,0,-2,0,0,99,99],
             [99, 99, 1, 1, 1, 1, 1, 1, 1, 1, 99, 99],
             [99, 99, 4, 2, 3, 5, 6, 3, 2, 4, 99, 99],
             [99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99],
             [99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99]
         ]
-        self.whiteInCheck = False
-        self.blackInCheck = False
         self.capturedWhitePieces = []
         self.capturedBlackPieces = []
         self.whiteKingLoc = (9,6)
         self.blackKingLoc = (2,6)
+        self.isWhiteTurn = True
 
     def __str__(self):
         out = ""
@@ -48,12 +49,19 @@ class Board:
     def getPiece(self, rank, file):
         return self.board[rank][file]
     
-    def isWhite(self,piece):
+    def isWhite(self, piece):
         if(piece > 0 and piece < 99):
             return True
         elif(piece < 0):
             return False
+
+    def getPieceColor(self, piece):
+        if(piece > 0 and piece < 99):
+            return 0
+        elif(piece < 0):
+            return 1
     
+
     def checkMoveValidity(self, piece, potentialMove, tracker, moveList):
         #Checks move validity based on square of the potential move, valid moves will be added to move list
         potentialMoveOccupant = self.getPiece(potentialMove[0], potentialMove[1])
@@ -107,20 +115,18 @@ class Board:
 
 
     def getBishopMoves(self, piece, start):
-        startRank = start[0]
-        startFile = start[1]
         moveList = []
         upleft = dleft = upright = dright = True
         inc = 1
         while True:
             if dleft:
-                dleft = self.bishopMovement(piece, operator.add, startRank, operator.sub, startFile, inc, dleft, moveList)
+                dleft = self.bishopMovement(piece, start, operator.add, operator.sub, inc, dleft, moveList)
             if upleft:
-                upleft = self.bishopMovement(piece, operator.sub, startRank, operator.sub, startFile, inc, upleft, moveList)
+                upleft = self.bishopMovement(piece, start, operator.sub, operator.sub, inc, upleft, moveList)
             if dright:
-                dright = self.bishopMovement(piece, operator.sub, startRank, operator.add, startFile, inc, dright, moveList)
+                dright = self.bishopMovement(piece, start, operator.sub, operator.add, inc, dright, moveList)
             if upright:
-                upright = self.bishopMovement(piece, operator.add, startRank, operator.add, startFile, inc, upright, moveList)
+                upright = self.bishopMovement(piece, start, operator.add, operator.add, inc, upright, moveList)
 
             if not any([upleft, dleft, upright, dright]):
                 break
@@ -136,20 +142,18 @@ class Board:
         return tracker
     
     def getRookMoves(self, piece, start):
-        startRank = start[0]
-        startFile = start[1]
         moveList = []
         up = down = left = right = True
         inc = 1
         while True:
             if up:
-                up = self.rookMovement(piece, operator.sub, startRank, inc, operator.mul, startFile, 1, up, moveList)
+                up = self.rookMovement(piece, start, operator.sub, inc, operator.mul, 1, up, moveList)
             if down:
-                down = self.rookMovement(piece, operator.add, startRank, inc, operator.mul, startFile, 1, down, moveList)
+                down = self.rookMovement(piece, start, operator.add, inc, operator.mul, 1, down, moveList)
             if left:
-                left = self.rookMovement(piece, operator.mul, startRank, 1, operator.sub, startFile, inc, left, moveList)
+                left = self.rookMovement(piece, start, operator.mul, 1, operator.sub, inc, left, moveList)
             if right:
-                right = self.rookMovement(piece, operator.mul, startRank, 1, operator.add, startFile, inc, right, moveList)
+                right = self.rookMovement(piece, start, operator.mul, 1, operator.add, inc, right, moveList)
 
             if not any([up, down, left, right]):
                 break
@@ -158,16 +162,14 @@ class Board:
 
     
     def getQueenMoves(self, piece, start):
-        startRank = start[0]
-        startFile = start[1]
-        moveList = self.getBishopMoves(piece, startRank, startFile) + self.getRookMoves(piece, startRank, startFile)
+        moveList = self.getBishopMoves(piece, start) + self.getRookMoves(piece, start)
         return moveList
 
 
     def getKingMoves(self, piece, start):
         startRank = start[0]
         startFile = start[1]
-        moveList = self.getQueenMoves(piece, startRank, startFile)
+        moveList = self.getQueenMoves(piece, start)
         for move in moveList[:]:
             if((abs(move[0] - startRank) > 1) or (abs(move[1] - startFile) > 1)):
                 moveList.remove(move)
@@ -224,25 +226,73 @@ class Board:
                 self.capturedBlackPieces.append(moveOccupant)
         self.board[move[0]][move[1]] = piece
         self.board[startRank][startFile] = 0
+        if(piece == 6):
+            self.whiteKingLoc = (move[0], move[1])
+        elif(piece == -6):
+            self.blackKingLoc = (move[0], move[1])
 
+
+    def getAllWhiteMoves(self):
+        allMoves = []
+        for rank in range(0, BOARD_DIM-1):
+            for file in range(0, BOARD_DIM-1):
+                square = self.board[rank][file]
+                if(square > 0 and square != 99):
+                    squareMoves = {"piece": square, "start": (rank, file), "moves": self.getLegalMoves((rank, file))}
+                    if(squareMoves['moves'] != []):
+                        allMoves.append(squareMoves)
+        return allMoves
     
+
+    def getAllBlackMoves(self):
+        allMoves = []
+        for rank in range(0, BOARD_DIM-1):
+            for file in range(0, BOARD_DIM-1):
+                square = self.board[rank][file]
+                if(square < 0):
+                    squareMoves = {"piece": square, "start": (rank, file), "moves": self.getLegalMoves((rank, file))}
+                    if(squareMoves['moves'] != []):
+                        allMoves.append(squareMoves)
+        return allMoves
+
+
+    #If at the start of a turn that players king location is in opposing players move list, it must be address (moved, blocked or take checking piece)
+    #If after a turn it would result in an opposing players piece to be able to move to kings location, that turn must not be allowed
     def ifKingInCheck(self, color):
         allOpposingMoves = []
-        for rank in self.board:
-            for file in self.board:
-                if(color > 1):
-                    pass
-                else:
-                    pass
+        inCheck = False
+        if(COLOR_MAP[color] == "WHITE"):
+            allOpposingMoves = self.getAllBlackMoves()
+        else:
+            allOpposingMoves = self.getAllWhiteMoves()
 
+        for move in allOpposingMoves:
+            if(COLOR_MAP[color] == "WHITE"):
+                if(self.whiteKingLoc in move['moves']):
+                    inCheck = True
+            else:
+                if(self.blackKingLoc in move['moves']):
+                    inCheck = True
+        return inCheck
         
-        
+
+    def removeMovesCausingCheck(self, piece, start, moves):
+        out = []
+        for move in moves:
+            boardcopy = copy.deepcopy(self)
+            boardcopy.makeMove(piece, start, move)
+            if(boardcopy.ifKingInCheck(boardcopy.getPieceColor(piece))):
+                pass
+            else:
+                out.append(move)
+        return out
+
 
     def getLegalMoves(self, start):
         rank = start[0]
         file = start[1]
         piece = self.getPiece(rank, file)
-        print(f"{piece} | {self.isWhite(piece)} |  {PIECE_MAP[abs(piece)]}")
+        # print(f"{piece} | {self.isWhite(piece)} |  {PIECE_MAP[abs(piece)]}")
 
         match abs(piece):
             case 1:
@@ -271,13 +321,19 @@ class Board:
 myboard = Board()
 print(str(myboard))
 moves = myboard.getLegalMoves((8,6))
-track = 1
-for move in moves:
-    print(f"{track} | {move}")
-    track += 1
-choice = int(input("Select move: "))
+print(moves)
+print(myboard.removeMovesCausingCheck(1, (8,6), moves))
+# print(moves)
+# track = 1
+# for move in moves:
+#     print(f"{track} | {move}")
+#     track += 1
+# choice = int(input("Select move: "))
 
-myboard.makeMove(2, (8, 6), moves[choice-1])
-print(str(myboard))
-print(myboard.capturedBlackPieces)
+# myboard.makeMove(1, (8, 6), moves[choice-1])
+# print(str(myboard))
+# print(myboard.capturedBlackPieces)
+# moves = myboard.getAllWhiteMoves()
+# myboard.removeMovesCausingCheck(1, (8,6), [(7, 6), (6, 6), (7, 7)])
+# print(myboard.ifKingInCheck(1))
 # print(myboard.getLegalMoves(8,6))
