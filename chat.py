@@ -3,44 +3,25 @@ import sys
 
 pygame.init()
 
-# ==========================================================
-# Constants
-# ==========================================================
+# =====================================================
+# Configuration
+# =====================================================
 SQUARE_SIZE = 80
 BOARD_SIZE = 8
-BOARD_OFFSET = 2  # Mailbox board playable area starts at row/col 2
+OFFSET = 2
 
-WIDTH = BOARD_SIZE * SQUARE_SIZE
-HEIGHT = BOARD_SIZE * SQUARE_SIZE
+WIDTH = HEIGHT = BOARD_SIZE * SQUARE_SIZE
 
 LIGHT = (240, 217, 181)
 DARK = (181, 136, 99)
 HIGHLIGHT = (255, 255, 0)
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Mailbox Chess")
+pygame.display.set_caption("Chess GUI")
 
-# ==========================================================
-# Example mailbox board (12x12)
-# ==========================================================
-board = [
-    [99,99,99,99,99,99,99,99,99,99,99,99],
-    [99,99,99,99,99,99,99,99,99,99,99,99],
-    [99,99,-4,-2,-3,-5,-6,-3,-2,-4,99,99],
-    [99,99,-1,-1,-1,-1,-1,-1,-1,-1,99,99],
-    [99,99, 0, 0, 0, 0, 0, 0, 0, 0,99,99],
-    [99,99, 0, 0, 0, 0, 0, 0, 0, 0,99,99],
-    [99,99, 0, 0, 0, 0, 0, 0, 0, 0,99,99],
-    [99,99, 0, 0, 0,-2, 0,-2, 0, 0,99,99],
-    [99,99, 1, 1, 1, 1, 1, 1, 1, 1,99,99],
-    [99,99, 4, 2, 3, 5, 6, 3, 2, 4,99,99],
-    [99,99,99,99,99,99,99,99,99,99,99,99],
-    [99,99,99,99,99,99,99,99,99,99,99,99],
-]
-
-# ==========================================================
-# Piece image files
-# ==========================================================
+# =====================================================
+# Piece Images
+# =====================================================
 piece_files = {
      1: "pieces-basic-svg/pawn-w.svg",
      2: "pieces-basic-svg/knight-w.svg",
@@ -57,160 +38,194 @@ piece_files = {
     -6: "pieces-basic-svg/king-b.svg",
 }
 
-# ==========================================================
-# Load images
-# ==========================================================
 piece_images = {}
 
 for piece, filename in piece_files.items():
-    image = pygame.image.load(filename)
-    image = pygame.transform.smoothscale(
-        image,
-        (SQUARE_SIZE, SQUARE_SIZE)
-    )
-    piece_images[piece] = image
+    img = pygame.image.load(filename)
+    img = pygame.transform.smoothscale(img, (SQUARE_SIZE, SQUARE_SIZE))
+    piece_images[piece] = img
 
 
-# ==========================================================
-# Chess Board Class
-# ==========================================================
-class ChessBoard:
+# =====================================================
+# GUI Class
+# =====================================================
+class ChessGUI:
 
-    def __init__(self, board):
+    def __init__(self):
+
+        self.board = None
+        self.selected = None
+
+        self.clock = pygame.time.Clock()
+
+    # ----------------------------------------------
+    # Engine sends a new board here
+    # ----------------------------------------------
+    def set_board(self, board):
         self.board = board
 
-    def set_board(self, new_board):
-        """Replace the current mailbox board."""
-        self.board = new_board
+    # ----------------------------------------------
+    # Draw everything
+    # ----------------------------------------------
+    def draw(self):
 
-    def draw(self, surface, selected=None):
+        for r in range(BOARD_SIZE):
+            for c in range(BOARD_SIZE):
 
-        # Draw squares
-        for row in range(BOARD_SIZE):
-            for col in range(BOARD_SIZE):
-
-                color = LIGHT if (row + col) % 2 == 0 else DARK
+                color = LIGHT if (r + c) % 2 == 0 else DARK
 
                 pygame.draw.rect(
-                    surface,
+                    screen,
                     color,
                     (
-                        col * SQUARE_SIZE,
-                        row * SQUARE_SIZE,
+                        c * SQUARE_SIZE,
+                        r * SQUARE_SIZE,
                         SQUARE_SIZE,
-                        SQUARE_SIZE
-                    )
+                        SQUARE_SIZE,
+                    ),
                 )
 
-        # Highlight selected square
-        if selected is not None:
+        if self.selected:
 
-            r, c = selected
+            r, c = self.selected
 
             pygame.draw.rect(
-                surface,
+                screen,
                 HIGHLIGHT,
                 (
-                    (c - BOARD_OFFSET) * SQUARE_SIZE,
-                    (r - BOARD_OFFSET) * SQUARE_SIZE,
+                    (c - OFFSET) * SQUARE_SIZE,
+                    (r - OFFSET) * SQUARE_SIZE,
                     SQUARE_SIZE,
-                    SQUARE_SIZE
+                    SQUARE_SIZE,
                 ),
-                4
+                4,
             )
 
-        # Draw pieces
-        for row in range(BOARD_OFFSET, BOARD_OFFSET + BOARD_SIZE):
-            for col in range(BOARD_OFFSET, BOARD_OFFSET + BOARD_SIZE):
+        if self.board is None:
+            return
 
-                piece = self.board[row][col]
+        for r in range(2, 10):
+            for c in range(2, 10):
 
-                if piece in (0, 99):
+                piece = self.board[r][c]
+
+                if piece == 0:
                     continue
 
-                x = (col - BOARD_OFFSET) * SQUARE_SIZE
-                y = (row - BOARD_OFFSET) * SQUARE_SIZE
+                screen.blit(
+                    piece_images[piece],
+                    (
+                        (c - OFFSET) * SQUARE_SIZE,
+                        (r - OFFSET) * SQUARE_SIZE,
+                    ),
+                )
 
-                surface.blit(piece_images[piece], (x, y))
+    # ----------------------------------------------
+    # Convert mouse to mailbox coordinate
+    # ----------------------------------------------
+    def mouse_to_mailbox(self, pos):
+
+        x, y = pos
+
+        col = x // SQUARE_SIZE + OFFSET
+        row = y // SQUARE_SIZE + OFFSET
+
+        if row < 2 or row > 9:
+            return None
+
+        if col < 2 or col > 9:
+            return None
+
+        return (row, col)
+
+    # ----------------------------------------------
+    # Wait until player chooses a move
+    #
+    # Returns:
+    #
+    # ((src_row,src_col),(dst_row,dst_col))
+    #
+    # ----------------------------------------------
+    def get_move(self):
+
+        self.selected = None
+
+        while True:
+
+            for event in pygame.event.get():
+
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+
+                if event.type == pygame.MOUSEBUTTONDOWN:
+
+                    square = self.mouse_to_mailbox(event.pos)
+
+                    if square is None:
+                        continue
+
+                    # First click
+                    if self.selected is None:
+
+                        if self.board[square[0]][square[1]] != 0:
+                            self.selected = square
+
+                    # Second click
+                    else:
+
+                        move = (self.selected, square)
+                        self.selected = None
+                        return move
+
+            self.draw()
+
+            pygame.display.flip()
+
+            self.clock.tick(60)
 
 
-# ==========================================================
-# Utility Functions
-# ==========================================================
-def screen_to_mailbox(pos):
-    """Convert mouse position to mailbox coordinates."""
+# =====================================================
+# Example Usage
+# =====================================================
 
-    x, y = pos
+board = [
+[99,99,99,99,99,99,99,99,99,99,99,99],
+[99,99,99,99,99,99,99,99,99,99,99,99],
+[99,99,-4,-2,-3,-5,-6,-3,-2,-4,99,99],
+[99,99,-1,-1,-1,-1,-1,-1,-1,-1,99,99],
+[99,99,0,0,0,0,0,0,0,0,99,99],
+[99,99,0,0,0,0,0,0,0,0,99,99],
+[99,99,0,0,0,0,0,0,0,0,99,99],
+[99,99,0,0,0,-2,0,-2,0,0,99,99],
+[99,99,1,1,1,1,1,1,1,1,99,99],
+[99,99,4,2,3,5,6,3,2,4,99,99],
+[99,99,99,99,99,99,99,99,99,99,99,99],
+[99,99,99,99,99,99,99,99,99,99,99,99],
+]
 
-    col = x // SQUARE_SIZE + BOARD_OFFSET
-    row = y // SQUARE_SIZE + BOARD_OFFSET
+gui = ChessGUI()
 
-    if row < 2 or row > 9 or col < 2 or col > 9:
-        return None
+while True:
 
-    return row, col
+    # Engine gives GUI the current board
+    gui.set_board(board)
 
+    # GUI waits for the player's move
+    move = gui.get_move()
 
-# ==========================================================
-# Create board
-# ==========================================================
-chessboard = ChessBoard(board)
+    print("Player chose:", move)
 
-selected = None
+    # --------------------------------------
+    # Example only:
+    # Move the piece directly.
+    #
+    # Replace this section with:
+    #
+    # board = engine.make_move(board, move)
+    #
+    # --------------------------------------
+    (sr, sc), (dr, dc) = move
 
-clock = pygame.time.Clock()
-
-# ==========================================================
-# Main Loop
-# ==========================================================
-running = True
-
-while running:
-
-    for event in pygame.event.get():
-
-        if event.type == pygame.QUIT:
-            running = False
-
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-
-            square = screen_to_mailbox(event.pos)
-
-            if square is None:
-                continue
-
-            row, col = square
-
-            # ----------------------------------------------
-            # Nothing selected
-            # ----------------------------------------------
-            if selected is None:
-
-                if chessboard.board[row][col] != 0:
-                    selected = (row, col)
-
-            # ----------------------------------------------
-            # Piece already selected
-            # ----------------------------------------------
-            else:
-
-                src_row, src_col = selected
-
-                # Clicking selected piece deselects it
-                if (row, col) == selected:
-                    selected = None
-                    continue
-
-                # Move piece (no legality checking)
-                chessboard.board[row][col] = chessboard.board[src_row][src_col]
-                chessboard.board[src_row][src_col] = 0
-
-                selected = None
-
-    chessboard.draw(screen, selected)
-
-    pygame.display.flip()
-    clock.tick(60)
-
-pygame.quit()
-sys.exit()
+    board[dr][dc] = board[sr][sc]
+    board[sr][sc] = 0

@@ -30,7 +30,11 @@ class Board:
         self.capturedBlackPieces = []
         self.whiteKingLoc = (9,6)
         self.blackKingLoc = (2,6)
+        self.allWhiteMoves = []
+        self.allBlackMoves = []
         self.isWhiteTurn = True
+        self.isBoardCopy = False
+        self.dontStoreMoves = False
 
     def __str__(self):
         out = ""
@@ -213,24 +217,55 @@ class Board:
         return moveList
 
 
-    def makeMove(self, piece, start, move):
-        startRank = start[0]
-        startFile = start[1]
+    def makeMove(self, start, move):
+        startRank, startFile = start
+        rank, file = move
+        piece = self.getPiece(startRank, startFile)
         #Move is a tuple (rank, file)
-        moveOccupant = self.getPiece(move[0], move[1])
+        moveOccupant = self.getPiece(rank, file)
         if(self.isWhite(piece)):
             if(moveOccupant < 0):
                 self.capturedBlackPieces.append(moveOccupant)
         else:
             if(moveOccupant > 0):
                 self.capturedBlackPieces.append(moveOccupant)
-        self.board[move[0]][move[1]] = piece
+        self.board[rank][file] = piece
         self.board[startRank][startFile] = 0
+        #If moved piece is a King
         if(piece == 6):
-            self.whiteKingLoc = (move[0], move[1])
+            self.whiteKingLoc = (rank, file)
         elif(piece == -6):
-            self.blackKingLoc = (move[0], move[1])
+            self.blackKingLoc = (rank, file)
 
+        #If moved piece is a pawn
+        if(piece == 1):
+            if(rank == 2):
+                self.promotePawn(move, 0)
+        elif(piece == -1):
+            if(rank == 9):
+                self.promotePawn(move, 1)
+        
+        
+        if(not self.dontStoreMoves):
+            self.storeAllMoves()
+
+
+    def storeAllMoves(self):
+        whiteMoves = []
+        blackMoves = []
+        for rank in range(0, BOARD_DIM-1):
+            for file in range(0, BOARD_DIM-1):
+                square = self.getPiece(rank, file)
+                if(self.isWhite(square)):
+                    squareMoves = {"piece": square, "start": (rank, file), "moves": self.getLegalMoves((rank, file))}
+                    if(squareMoves['moves'] != []):
+                        whiteMoves.append(squareMoves)
+                else:
+                    squareMoves = {"piece": square, "start": (rank, file), "moves": self.getLegalMoves((rank, file))}
+                    if(squareMoves['moves'] != []):
+                        blackMoves.append(squareMoves)
+        self.allBlackMoves = blackMoves
+        self.allWhiteMoves = whiteMoves
 
     def getAllWhiteMoves(self):
         allMoves = []
@@ -262,9 +297,9 @@ class Board:
         allOpposingMoves = []
         inCheck = False
         if(COLOR_MAP[color] == "WHITE"):
-            allOpposingMoves = self.getAllBlackMoves()
+            allOpposingMoves = self.allBlackMoves
         else:
-            allOpposingMoves = self.getAllWhiteMoves()
+            allOpposingMoves = self.allWhiteMoves
 
         for move in allOpposingMoves:
             if(COLOR_MAP[color] == "WHITE"):
@@ -276,61 +311,99 @@ class Board:
         return inCheck
         
 
-    def removeMovesCausingCheck(self, piece, start, moves):
+    def removeMovesCausingCheck(self, start, moves):
+        piece = self.getPiece(start[0], start[1])
         out = []
-        for move in moves:
-            boardcopy = copy.deepcopy(self)
-            boardcopy.makeMove(piece, start, move)
-            if(boardcopy.ifKingInCheck(boardcopy.getPieceColor(piece))):
-                pass
-            else:
-                out.append(move)
+        if(not self.isBoardCopy):
+            for move in moves:
+                boardcopy = copy.deepcopy(self)
+                boardcopy.isBoardCopy = True
+                boardcopy.makeMove(start, move)
+                if(boardcopy.ifKingInCheck(boardcopy.getPieceColor(piece))):
+                    pass
+                else:
+                    out.append(move)
+        else:
+            #Maybe don't need any of this 
+            # print(f"{start} | {moves}")
+            for move in moves:
+                if(self.ifKingInCheck(self.getPieceColor(piece))):
+                    pass
+                else:
+                    out.append(move)
+                # boardcopy = copy.deepcopy(self)
+                # boardcopy.isBoardCopy = True
+                # boardcopy.dontStoreMoves = True
+                # # boardcopy.makeMove(start, move)
+                # if(boardcopy.ifKingInCheck(boardcopy.getPieceColor(piece))):
+                #     pass
+                # else:
+                #     out.append(move)
         return out
+    
+
+    def promotePawn(self, loc, color):
+        track = True
+        while track:
+            newPiece = int(input("Select piece to promote pawn to: 2: Knight, 3: Bishop, 4: Rook, 5: Queen"))
+            if(newPiece >= 2 and newPiece <= 5):
+                track = False
+            else:
+                print("Enter valid piece value")
+        if(COLOR_MAP[color] == "WHITE"):
+            self.board[loc[0]][loc[1]] = newPiece
+        else:
+            self.board[loc[0]][loc[1]] = (-1 * newPiece)
 
 
     def getLegalMoves(self, start):
-        rank = start[0]
-        file = start[1]
+        rank, file = start
+        moves = []
         piece = self.getPiece(rank, file)
         # print(f"{piece} | {self.isWhite(piece)} |  {PIECE_MAP[abs(piece)]}")
 
         match abs(piece):
             case 1:
                 #Pawn
-                return self.getPawnMoves(piece, start)
+                moves = self.getPawnMoves(piece, start)
+
             case 2:
                 #Knight
-                return self.getKnightMoves(piece, start)
+                moves = self.getKnightMoves(piece, start)
 
             case 3:
                 #Bishop
-                return self.getBishopMoves(piece, start)
+                moves = self.getBishopMoves(piece, start)
 
             case 4:
                 #Rook
-                return self.getRookMoves(piece, start)
+                moves = self.getRookMoves(piece, start)
             
             case 5:
                 #Queen
-                return self.getQueenMoves(piece, start)
+                moves = self.getQueenMoves(piece, start)
 
             case 6:
                 #King
-                return self.getKingMoves(piece, start)
+                moves = self.getKingMoves(piece, start)
 
-myboard = Board()
-print(str(myboard))
-moves = myboard.getLegalMoves((8,6))
-print(moves)
-print(myboard.removeMovesCausingCheck(1, (8,6), moves))
-# print(moves)
+        moves = self.removeMovesCausingCheck(start, moves)
+        return moves
+    
+
+# myboard = Board()
+# print(str(myboard))
+# moves = myboard.getLegalMoves((3,8))
+# # print(moves)
+# # print(myboard.removeMovesCausingCheck(1, (8,6), moves))
+# # print(moves)
 # track = 1
 # for move in moves:
 #     print(f"{track} | {move}")
 #     track += 1
 # choice = int(input("Select move: "))
 
-# myboard.makeMove(1, (8, 6), moves[choice-1])
+# myboard.makeMove((3, 8), moves[choice-1])
 # print(str(myboard))
 # print(myboard.capturedBlackPieces)
 # moves = myboard.getAllWhiteMoves()

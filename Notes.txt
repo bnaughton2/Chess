@@ -6,3 +6,6 @@ Castling
 
 
 Draw pieces on board
+
+
+self | getLegalMoves -> RemoveMovesCausingCheck -> boardcopy | makeMove -> storeAllMoves -> getLegalMoves -> RemoveMovesCausingCheck -> this time don't call store moves
